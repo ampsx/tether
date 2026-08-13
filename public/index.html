@@ -381,6 +381,12 @@
 
     el.connectPanel.hidden = state.connected;
     el.browser.hidden = !state.connected;
+
+    // Say why the panel came back, rather than leaving it looking like a fresh start.
+    if (state.stalled && el.connectMsg.textContent === '') {
+      el.connectMsg.textContent =
+        'The watch stopped answering — it usually means the screen slept. Wake it and connect again.';
+    }
   }
 
   async function refreshDevice() {

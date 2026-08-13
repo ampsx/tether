@@ -5,6 +5,7 @@
   "description": "Manage files on a Wear OS watch over wireless adb.",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node test-roundtrip.mjs"
+    "test": "node test-devices.mjs",
+    "test:device": "node test-devices.mjs && node test-roundtrip.mjs"
   }
 }

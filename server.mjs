@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 import { readFile, mkdir, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, extname, basename } from 'node:path';
+import { dirname, join, extname, basename, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
@@ -26,13 +26,20 @@ const shellQuote = (path) => `'${String(path).replace(/'/g, `'\\''`)}'`;
 
 /**
  * The watch usually ends up attached twice — once from an explicit `connect`
- * and once because adb found the same device over mDNS. Both transports work,
- * but any command without `-s` then fails with "more than one device". Every
+ * and once because adb found the same device over mDNS — and any command
+ * without a device selector then fails with "more than one device". Every
  * device-directed call goes through [target] so it names one.
+ *
+ * It names it by transport id rather than serial on purpose. Each time wireless
+ * debugging is toggled the watch re-advertises, and adb disambiguates the
+ * repeat by renaming the transport "adb-XXXX (2)._adb-tls-connect._tcp" — a
+ * serial containing a space. Splitting that on whitespace yields a name no
+ * device answers to, so every command fails while the UI still looks connected:
+ * a device with no model, no storage, and an empty folder listing.
  */
-let serial = null;
+let transport = null;
 
-const target = (args) => (serial ? ['-s', serial, ...args] : args);
+const target = (args) => (transport ? ['-t', String(transport), ...args] : args);
 
 async function adb(args, options = {}) {
   try {
@@ -47,30 +54,65 @@ const adbShell = (command) => adb(target(['shell', command]));
 
 // ---------------------------------------------------------------- device
 
-async function device() {
-  const { stdout } = await adb(['devices', '-l']);
-  const attached = stdout
+/**
+ * Serials can contain spaces, so the state keyword is the only reliable
+ * boundary: everything before it is the serial, everything after is the -l
+ * detail where the transport id lives.
+ */
+const DEVICE_LINE = /^(.*?)\s+(device|offline|unauthorized|bootloader)\b(.*)$/;
+
+/** Exported so `npm run test:parse` exercises this, not a copy of it. */
+export function parseDevices(stdout) {
+  return stdout
     .split('\n')
     .slice(1)
     .map((row) => row.trim())
-    .filter((row) => row && !row.startsWith('*') && /\sdevice(\s|$)/.test(row))
-    .map((row) => row.split(/\s+/)[0]);
+    .filter((row) => row && !row.startsWith('*'))
+    .map((row) => row.match(DEVICE_LINE))
+    .filter((match) => match && match[2] === 'device')
+    .map((match) => ({
+      serial: match[1],
+      transport: match[3].match(/transport_id:(\d+)/)?.[1] ?? null,
+    }));
+}
+
+async function device() {
+  const { stdout } = await adb(['devices', '-l']);
+  const attached = parseDevices(stdout);
 
   if (!attached.length) {
-    serial = null;
+    transport = null;
     return { connected: false };
   }
 
-  // Prefer the ip:port transport: it survives a reconnect, where the mDNS name
-  // picks up a "(2)" suffix each time the watch re-advertises.
-  serial = attached.find((id) => /^\d+\.\d+\.\d+\.\d+:\d+$/.test(id)) ?? attached[0];
+  // Any transport reaches the same watch; prefer the ip:port one so the serial
+  // shown in the UI is the address, not adb's mDNS bookkeeping name.
+  const chosen =
+    attached.find((d) => /^\d+\.\d+\.\d+\.\d+:\d+$/.test(d.serial)) ?? attached[0];
+  transport = chosen.transport;
 
   const props = await adbShell(
     'getprop ro.product.model; getprop ro.build.version.release; getprop ro.product.manufacturer'
   );
   const [model, release, maker] = props.stdout.trim().split('\n').map((v) => v.trim());
 
-  return { connected: true, serial, model, release, maker, transports: attached.length };
+  // A transport can be listed and still answer nothing — a watch that slept
+  // mid-session leaves one behind. Reporting that as connected is what produced
+  // a nameless device above an empty folder, which reads as "your watch is
+  // empty" rather than "the link is dead". Say it is gone instead.
+  if (!model) {
+    transport = null;
+    return { connected: false, stalled: true };
+  }
+
+  return {
+    connected: true,
+    serial: chosen.serial,
+    model,
+    release,
+    maker,
+    transports: attached.length,
+  };
 }
 
 async function storage() {
@@ -295,9 +337,12 @@ const server = createServer(async (req, res) => {
 });
 
 // Loopback only: this process can read and delete everything on the watch, and
-// nothing about it should be reachable from the network.
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Tether is up:  http://localhost:${PORT}`);
-  console.log(`adb:           ${ADB}`);
-  console.log(`Saves land in: ${DOWNLOADS}`);
-});
+// nothing about it should be reachable from the network. Guarded so the tests
+// can import parseDevices without starting a server.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  server.listen(PORT, '127.0.0.1', () => {
+    console.log(`Tether is up:  http://localhost:${PORT}`);
+    console.log(`adb:           ${ADB}`);
+    console.log(`Saves land in: ${DOWNLOADS}`);
+  });
+}
