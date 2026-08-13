@@ -1,0 +1,10 @@
+{
+  "name": "tether",
+  "private": true,
+  "type": "module",
+  "description": "Manage files on a Wear OS watch over wireless adb.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node test-roundtrip.mjs"
+  }
+}

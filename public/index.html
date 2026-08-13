@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tether</title>
+<meta name="theme-color" content="#0E1220">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230E1220'/><circle cx='16' cy='16' r='9' fill='%23000'/><circle cx='16' cy='16' r='13' fill='none' stroke='%23E0A040' stroke-width='1.5' stroke-dasharray='55 27' stroke-linecap='round' transform='rotate(-90 16 16)'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink-deep: #0E1220;
+    --ink: #171D2E;
+    --ink-raised: #1E2537;
+    --line: #262D42;
+    --bone: #EDE6D8;
+    --slate: #7C8397;
+    --amber: #E0A040;
+    --red: #D9704F;
+
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--ink-deep);
+    color: var(--bone);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+
+  main { max-width: 940px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ---- Masthead + device ---- */
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 30px 0 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+  }
+
+  .device { display: flex; align-items: center; gap: 14px; }
+  .device-text { text-align: right; line-height: 1.3; }
+  .device-name { font-weight: 600; font-size: 14px; }
+  .device-sub { font-family: var(--mono); font-size: 11px; color: var(--slate); letter-spacing: 0.06em; }
+
+  /* The dial echoes the watch's own face: the amber arc is how full it is. */
+  .dial { position: relative; width: 46px; height: 46px; flex: none; }
+  .dial svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+  .dial-track { fill: none; stroke: var(--line); stroke-width: 3; }
+  .dial-fill {
+    fill: none; stroke: var(--amber); stroke-width: 3; stroke-linecap: round;
+    stroke-dasharray: 119.4; stroke-dashoffset: 119.4;
+    transition: stroke-dashoffset 400ms ease;
+  }
+  .dial-core {
+    position: absolute; inset: 8px; border-radius: 50%;
+    background: #000; box-shadow: inset 0 0 0 1px #22283A;
+  }
+  .dial[data-state="off"] .dial-fill { stroke: var(--line); }
+
+  /* ---- Connect panel ---- */
+
+  .connect { padding: 40px 0; display: grid; gap: 18px; max-width: 560px; }
+  .connect h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .connect p { margin: 0; color: var(--slate); }
+  .connect ol { margin: 0; padding-left: 20px; color: var(--slate); }
+  .connect li { margin-bottom: 6px; }
+  .connect li b { color: var(--bone); font-weight: 500; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 130px auto; gap: 10px; }
+
+  input {
+    width: 100%;
+    background: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 13px;
+    color: var(--bone);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  input::placeholder { color: #5C6379; }
+  input:focus { outline: none; border-color: #3A4360; }
+  input:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+
+  button {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-deep);
+    background: var(--bone);
+    border: 0;
+    border-radius: 9px;
+    padding: 0 16px;
+    min-height: 42px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.ghost { background: transparent; color: var(--slate); border: 1px solid var(--line); }
+  button.ghost:hover:not(:disabled) { color: var(--bone); border-color: #3A4360; }
+  button.danger { background: transparent; color: var(--red); border: 1px solid #46303A; }
+  button.danger:hover:not(:disabled) { background: #2A1B1F; }
+
+  /* ---- Browser ---- */
+
+  .bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 18px 0; border-bottom: 1px solid var(--line);
+  }
+  .crumbs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 200px; }
+  .crumb {
+    background: none; border: 0; padding: 3px 6px; min-height: 0;
+    color: var(--slate); font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.04em; text-transform: none; cursor: pointer; border-radius: 5px;
+  }
+  .crumb:hover { color: var(--bone); }
+  .crumb[aria-current="true"] { color: var(--bone); }
+  .crumb-sep { color: #3A4360; font-family: var(--mono); font-size: 12px; }
+
+  .spacer { flex: 1; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--slate);
+  }
+  thead th:last-child, td:last-child { text-align: right; }
+  tbody td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:hover { background: var(--ink); }
+  tbody tr[data-selected="true"] { background: var(--ink-raised); }
+
+  .check { width: 34px; }
+  input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--amber); cursor: pointer; }
+
+  .entry { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .glyph { flex: none; width: 17px; color: var(--slate); }
+  .entry[data-directory="true"] .glyph { color: var(--amber); }
+  .name {
+    background: none; border: 0; padding: 0; min-height: 0; color: var(--bone);
+    font-family: var(--sans); font-size: 15px; font-weight: 400; letter-spacing: 0;
+    text-transform: none; text-align: left; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .entry[data-directory="true"] .name { font-weight: 500; }
+  .name:hover { color: var(--amber); }
+  td.meta { font-family: var(--mono); font-size: 12px; color: var(--slate); white-space: nowrap; }
+
+  .empty { padding: 46px 10px; text-align: center; color: var(--slate); }
+
+  /* ---- Drop veil ---- */
+
+  .drop {
+    position: fixed; inset: 0; z-index: 20;
+    background: rgba(14, 18, 32, 0.94);
+    display: grid; place-items: center; text-align: center;
+    border: 2px dashed var(--amber); border-radius: 14px;
+  }
+  .drop strong { display: block; font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .drop span { color: var(--slate); font-family: var(--mono); font-size: 12px; }
+
+  /* ---- Toast ---- */
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: var(--ink-raised); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 18px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.5); z-index: 40; max-width: 82vw;
+  }
+  .toast[data-tone="bad"] { border-color: #46303A; color: var(--red); }
+  .toast[data-tone="busy"] { color: var(--amber); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: 1ms !important; } }
+
+  @media (max-width: 620px) {
+    .field-row { grid-template-columns: 1fr; }
+    .hide-narrow { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tether</h1>
+    <div class="device">
+      <div class="device-text">
+        <div class="device-name" id="deviceName">No watch</div>
+        <div class="device-sub" id="deviceSub">Not connected</div>
+      </div>
+      <div class="dial" id="dial" data-state="off">
+        <svg viewBox="0 0 46 46" aria-hidden="true">
+          <circle class="dial-track" cx="23" cy="23" r="19"></circle>
+          <circle class="dial-fill" id="dialFill" cx="23" cy="23" r="19"></circle>
+        </svg>
+        <div class="dial-core"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Connect -->
+  <section class="connect" id="connectPanel">
+    <h2>Wake the watch, then pair.</h2>
+    <ol>
+      <li>On the watch: <b>Settings → Developer options → Wireless debugging</b>, turned on.</li>
+      <li>Tap <b>Pair new device</b> for a code and an address.</li>
+      <li>Keep the screen awake — the link drops when the watch sleeps.</li>
+    </ol>
+
+    <div>
+      <div class="mono" style="margin-bottom:8px">Pair (first time, or after toggling debugging)</div>
+      <form class="field-row" id="pairForm">
+        <input id="pairAddress" placeholder="192.168.1.233:37789" autocomplete="off">
+        <input id="pairCode" placeholder="Code" inputmode="numeric" autocomplete="off">
+        <button type="submit">Pair</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="mono" style="margin-bottom:8px">Connect (already paired)</div>
+      <form class="field-row" id="connectForm" style="grid-template-columns:1fr auto auto">
+        <input id="connectAddress" placeholder="192.168.1.233:44061" autocomplete="off">
+        <button type="button" class="ghost" id="discoverBtn">Find it</button>
+        <button type="submit">Connect</button>
+      </form>
+    </div>
+    <p class="mono" id="connectMsg" style="text-transform:none;letter-spacing:0.04em"></p>
+  </section>
+
+  <!-- Browser -->
+  <section id="browser" hidden>
+    <div class="bar">
+      <nav class="crumbs" id="crumbs" aria-label="Path"></nav>
+      <button class="ghost" id="refreshBtn">Refresh</button>
+      <button class="ghost" id="newFolderBtn">New folder</button>
+      <button class="ghost" id="uploadBtn">Send files</button>
+      <button class="ghost" id="saveBtn" disabled>Save</button>
+      <button class="danger" id="deleteBtn" disabled>Delete</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="check"><input type="checkbox" id="selectAll" aria-label="Select everything here"></th>
+          <th>Name</th>
+          <th class="hide-narrow">Size</th>
+          <th class="hide-narrow">Modified</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <p class="empty" id="empty" hidden>This folder is empty. Drop files anywhere to send them here.</p>
+  </section>
+</main>
+
+<input type="file" id="filePicker" multiple hidden>
+
+<div class="drop" id="drop" hidden>
+  <div>
+    <strong>Drop to send to the watch</strong>
+    <span id="dropTarget"></span>
+  </div>
+</div>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const el = Object.fromEntries(
+    ['deviceName','deviceSub','dial','dialFill','connectPanel','browser','crumbs','rows','empty',
+     'pairForm','pairAddress','pairCode','connectForm','connectAddress','discoverBtn','connectMsg',
+     'refreshBtn','newFolderBtn','uploadBtn','saveBtn','deleteBtn','selectAll','filePicker','drop','dropTarget']
+      .map((id) => [id, $(id)])
+  );
+
+  const DIAL_CIRCUMFERENCE = 119.4;
+  const ROOT = '/sdcard';
+
+  let path = ROOT;
+  let entries = [];
+  let selected = new Set();
+  let connected = false;
+
+  // ---- helpers ----
+
+  const bytes = (n) => {
+    if (!n) return '—';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = n, unit = 0;
+    while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+    return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+  };
+
+  const when = (ms) => {
+    if (!ms) return '—';
+    const d = new Date(ms);
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString(undefined, {
+      day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }),
+    }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  };
+
+  let toastTimer;
+  function toast(text, tone = 'ok', sticky = false) {
+    clearTimeout(toastTimer);
+    document.querySelector('.toast')?.remove();
+    if (!text) return;
+    const node = document.createElement('div');
+    node.className = 'toast';
+    node.dataset.tone = tone;
+    node.textContent = text;
+    node.setAttribute('role', 'status');
+    document.body.append(node);
+    if (!sticky) toastTimer = setTimeout(() => node.remove(), 3400);
+  }
+
+  async function api(method, route, { body, raw, query } = {}) {
+    const url = new URL(route, location.origin);
+    for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value);
+    const init = { method, headers: {} };
+    if (raw) init.body = raw;
+    else if (body) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(body); }
+    const res = await fetch(url, init);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    return data;
+  }
+
+  // ---- device ----
+
+  function paintDevice(state) {
+    connected = state.connected;
+    el.deviceName.textContent = state.connected ? (state.model || 'Watch') : 'No watch';
+
+    if (state.connected && state.storage) {
+      const { used, total, free } = state.storage;
+      el.deviceSub.textContent = `${bytes(free)} free of ${bytes(total)}`;
+      el.dial.dataset.state = 'on';
+      el.dialFill.style.strokeDashoffset = String(DIAL_CIRCUMFERENCE * (1 - used / total));
+    } else {
+      el.deviceSub.textContent = state.connected ? `Wear OS ${state.release ?? ''}`.trim() : 'Not connected';
+      el.dial.dataset.state = state.connected ? 'on' : 'off';
+      el.dialFill.style.strokeDashoffset = String(DIAL_CIRCUMFERENCE);
+    }
+
+    el.connectPanel.hidden = state.connected;
+    el.browser.hidden = !state.connected;
+  }
+
+  async function refreshDevice() {
+    const state = await api('GET', '/api/state');
+    const was = connected;
+    paintDevice(state);
+    if (state.connected && !was) await load(ROOT);
+    return state;
+  }
+
+  // ---- listing ----
+
+  function crumbs() {
+    const parts = path.replace(ROOT, '').split('/').filter(Boolean);
+    const nodes = [];
+    const add = (label, target, current) => {
+      const button = document.createElement('button');
+      button.className = 'crumb';
+      button.textContent = label;
+      if (current) button.setAttribute('aria-current', 'true');
+      else button.addEventListener('click', () => load(target));
+      nodes.push(button);
+    };
+    add('Watch storage', ROOT, parts.length === 0);
+    let walk = ROOT;
+    parts.forEach((part, index) => {
+      walk += `/${part}`;
+      const sep = document.createElement('span');
+      sep.className = 'crumb-sep';
+      sep.textContent = '/';
+      nodes.push(sep);
+      add(part, walk, index === parts.length - 1);
+    });
+    el.crumbs.replaceChildren(...nodes);
+  }
+
+  function paintRows() {
+    el.rows.replaceChildren(...entries.map((entry) => {
+      const tr = document.createElement('tr');
+      tr.dataset.selected = String(selected.has(entry.path));
+
+      const pick = document.createElement('td');
+      pick.className = 'check';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = selected.has(entry.path);
+      box.setAttribute('aria-label', `Select ${entry.name}`);
+      box.addEventListener('change', () => {
+        box.checked ? selected.add(entry.path) : selected.delete(entry.path);
+        paintRows();
+        paintToolbar();
+      });
+      pick.append(box);
+
+      const nameCell = document.createElement('td');
+      const wrap = document.createElement('div');
+      wrap.className = 'entry';
+      wrap.dataset.directory = String(entry.directory);
+
+      const glyph = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      glyph.setAttribute('class', 'glyph');
+      glyph.setAttribute('viewBox', '0 0 16 16');
+      glyph.setAttribute('height', '17');
+      glyph.innerHTML = entry.directory
+        ? '<path d="M1.5 3.5h4l1.4 1.6h7.6v7.4H1.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
+        : '<path d="M3.5 1.5h6l3 3v10h-9z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.5 1.6v3.2h3.1" fill="none" stroke="currentColor" stroke-width="1.3"/>';
+
+      const name = document.createElement('button');
+      name.className = 'name';
+      name.textContent = entry.name;
+      name.title = entry.name;
+      name.addEventListener('click', () => {
+        if (entry.directory) load(entry.path);
+        else window.location.href = `/api/file?path=${encodeURIComponent(entry.path)}`;
+      });
+
+      wrap.append(glyph, name);
+      nameCell.append(wrap);
+
+      const size = document.createElement('td');
+      size.className = 'meta hide-narrow';
+      size.textContent = entry.directory ? '—' : bytes(entry.size);
+
+      const modified = document.createElement('td');
+      modified.className = 'meta hide-narrow';
+      modified.textContent = when(entry.modified);
+
+      tr.append(pick, nameCell, size, modified);
+      return tr;
+    }));
+
+    el.empty.hidden = entries.length > 0;
+    el.selectAll.checked = entries.length > 0 && selected.size === entries.length;
+  }
+
+  function paintToolbar() {
+    el.saveBtn.disabled = selected.size === 0;
+    el.deleteBtn.disabled = selected.size === 0;
+    el.saveBtn.textContent = selected.size ? `Save ${selected.size}` : 'Save';
+  }
+
+  async function load(next = path) {
+    try {
+      const data = await api('GET', '/api/ls', { query: { path: next } });
+      path = data.path;
+      entries = data.entries;
+      selected = new Set();
+      crumbs();
+      paintRows();
+      paintToolbar();
+    } catch (error) {
+      toast(error.message, 'bad');
+    }
+  }
+
+  // ---- actions ----
+
+  el.pairForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    el.connectMsg.textContent = 'Pairing…';
+    try {
+      await api('POST', '/api/pair', {
+        body: { address: el.pairAddress.value.trim(), code: el.pairCode.value.trim() },
+      });
+      el.connectMsg.textContent = 'Paired. Finding the watch…';
+      el.pairCode.value = '';
+      // Pairing and debugging use different ports; mDNS knows the second one.
+      const { found } = await api('GET', '/api/discover');
+      if (found[0]) {
+        el.connectAddress.value = found[0];
+        await api('POST', '/api/connect', { body: { address: found[0] } });
+      }
+      await refreshDevice();
+    } catch (error) {
+      el.connectMsg.textContent = error.message;
+    }
+  });
+
+  el.connectForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    el.connectMsg.textContent = 'Connecting…';
+    try {
+      await api('POST', '/api/connect', { body: { address: el.connectAddress.value.trim() } });
+      await refreshDevice();
+      el.connectMsg.textContent = '';
+    } catch (error) {
+      el.connectMsg.textContent = error.message;
+    }
+  });
+
+  el.discoverBtn.addEventListener('click', async () => {
+    el.connectMsg.textContent = 'Looking…';
+    const { found } = await api('GET', '/api/discover');
+    if (!found.length) { el.connectMsg.textContent = 'Nothing on the network. Is the watch awake?'; return; }
+    el.connectAddress.value = found[0];
+    el.connectMsg.textContent = `Found ${found[0]}`;
+  });
+
+  el.refreshBtn.addEventListener('click', () => load());
+  el.selectAll.addEventListener('change', () => {
+    selected = el.selectAll.checked ? new Set(entries.map((e) => e.path)) : new Set();
+    paintRows();
+    paintToolbar();
+  });
+
+  el.newFolderBtn.addEventListener('click', async () => {
+    const name = prompt('Name the folder');
+    if (!name?.trim()) return;
+    try {
+      await api('POST', '/api/mkdir', { body: { path, name: name.trim() } });
+      await load();
+      toast('Folder created.');
+    } catch (error) { toast(error.message, 'bad'); }
+  });
+
+  el.saveBtn.addEventListener('click', async () => {
+    toast('Saving to the laptop…', 'busy', true);
+    try {
+      const data = await api('POST', '/api/save', { body: { paths: [...selected] } });
+      toast(data.message);
+      selected = new Set();
+      paintRows();
+      paintToolbar();
+    } catch (error) { toast(error.message, 'bad'); }
+  });
+
+  el.deleteBtn.addEventListener('click', async () => {
+    const count = selected.size;
+    if (!confirm(`Delete ${count} item${count === 1 ? '' : 's'} from the watch? This cannot be undone.`)) return;
+    try {
+      await api('POST', '/api/delete', { body: { paths: [...selected] } });
+      await load();
+      await refreshDevice();
+      toast(`Deleted ${count} item${count === 1 ? '' : 's'}.`);
+    } catch (error) { toast(error.message, 'bad'); }
+  });
+
+  el.uploadBtn.addEventListener('click', () => el.filePicker.click());
+  el.filePicker.addEventListener('change', () => {
+    send([...el.filePicker.files]);
+    el.filePicker.value = '';
+  });
+
+  async function send(files) {
+    if (!files.length) return;
+    let done = 0;
+    for (const file of files) {
+      toast(`Sending ${file.name} (${done + 1} of ${files.length})…`, 'busy', true);
+      try {
+        const isApk = file.name.toLowerCase().endsWith('.apk');
+        const route = isApk && confirm(`Install ${file.name} on the watch?\n\nCancel to copy it across as a plain file instead.`)
+          ? '/api/install'
+          : '/api/upload';
+        await api('POST', route, {
+          raw: await file.arrayBuffer(),
+          query: { path, name: file.name },
+        });
+        done++;
+      } catch (error) {
+        toast(`${file.name}: ${error.message}`, 'bad');
+        return;
+      }
+    }
+    await load();
+    await refreshDevice();
+    toast(`Sent ${done} file${done === 1 ? '' : 's'}.`);
+  }
+
+  // Drag and drop anywhere on the page sends into the folder you are looking at.
+  let dragDepth = 0;
+  addEventListener('dragenter', (event) => {
+    if (!connected || !event.dataTransfer?.types.includes('Files')) return;
+    dragDepth++;
+    el.dropTarget.textContent = path;
+    el.drop.hidden = false;
+  });
+  addEventListener('dragover', (event) => { if (!el.drop.hidden) event.preventDefault(); });
+  addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; el.drop.hidden = true; } });
+  addEventListener('drop', (event) => {
+    if (el.drop.hidden) return;
+    event.preventDefault();
+    dragDepth = 0;
+    el.drop.hidden = true;
+    send([...event.dataTransfer.files]);
+  });
+
+  // The watch drops off the network whenever its screen sleeps, so keep checking.
+  refreshDevice().catch(() => {});
+  setInterval(() => refreshDevice().catch(() => {}), 5000);
+</script>
+</body>
+</html>
