@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Tether">
+  <!-- Quotidian's mark is a dial, so Tether takes the other half of the same
+       vocabulary: two bodies and the line between them. The large amber ring is
+       the watch, the small bone one the laptop. Earlier drafts hung a solid dot
+       off a tangent cord, which at 16px is simply a magnifying glass; two rings
+       on a link cannot be read as anything but a connection. The link stops at
+       each ring's outer edge so nothing overlaps at small sizes. -->
+  <rect width="64" height="64" rx="15" fill="#0E1220"/>
+  <path d="M26.5 38.5 L35.4 29.6" stroke="#EDE6D8" stroke-width="3.4"
+        stroke-linecap="round" opacity="0.78"/>
+  <circle cx="43" cy="22" r="9" fill="none" stroke="#E0A040" stroke-width="4.4"/>
+  <circle cx="21" cy="44" r="6" fill="none" stroke="#EDE6D8" stroke-width="3.6"/>
+</svg>

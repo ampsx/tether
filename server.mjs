@@ -273,10 +273,20 @@ const server = createServer(async (req, res) => {
 
   try {
     if (handler) return await handler(req, res, url);
-    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
-      const page = await readFile(join(HERE, 'public', 'index.html'));
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(page);
+
+    if (req.method === 'GET') {
+      const assets = {
+        '/': ['index.html', 'text/html; charset=utf-8'],
+        '/index.html': ['index.html', 'text/html; charset=utf-8'],
+        '/logo.svg': ['logo.svg', 'image/svg+xml'],
+        '/favicon.ico': ['tether.ico', 'image/x-icon'],
+      };
+      const asset = assets[url.pathname];
+      if (asset) {
+        const [name, type] = asset;
+        res.writeHead(200, { 'Content-Type': type });
+        return res.end(await readFile(join(HERE, 'public', name)));
+      }
     }
     json(res, 404, { error: 'No such route.' });
   } catch (error) {

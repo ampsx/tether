@@ -3,11 +3,17 @@
 A file manager for a Wear OS watch, over wireless adb, from the laptop.
 
 Built as a sibling to [Quotidian](../quotidian) — same palette, so the two tools
-read as one set.
+read as one set. Quotidian's mark is a dial, so Tether takes the other half of
+that vocabulary: two bodies and the line between them, the large amber ring
+being the watch and the small bone one the laptop. Earlier drafts hung a solid
+dot off a tangent cord, which at favicon size is simply a magnifying glass.
+
+`public/logo.svg` is the source; `public/tether.ico` is generated from it for
+the Windows shortcut and carries sizes from 16 to 256.
 
 ## Running it
 
-Double-click **`tether.cmd`**, or:
+Double-click the **Tether** shortcut on the Desktop, or `tether.cmd` here, or:
 
 ```powershell
 node server.mjs      # then open http://localhost:7845
@@ -36,7 +42,8 @@ Then:
 | Download a file | Click its name |
 | Save several at once | Tick them, press **Save** — they land in `downloads/` |
 | Send files to the watch | Drag them onto the window, or press **Send files** |
-| Install an APK | Drag the `.apk` on and confirm the install prompt |
+| Update Quotidian | Run `E:\quotidian\release.cmd`, then drag `Quotidian.apk` from the Desktop onto the window |
+| Install any APK | Drag the `.apk` on and confirm the install prompt |
 | Free up space | Tick, press **Delete** |
 
 The dial in the corner is the watch's storage: the amber arc is how full it is.
@@ -67,3 +74,11 @@ delete the root. It cleans up after itself.
   Galaxy Watch does not give you.
 - Directory listings come from one `stat -c '%F|%s|%Y|%n'` call per folder rather
   than parsing `ls -l`, so filenames containing spaces survive.
+- **The watch often ends up attached twice** — once from an explicit `connect`
+  and once because adb rediscovered it over mDNS — and any command without `-s`
+  then fails with "more than one device". Every device-directed call names one
+  serial, preferring the `ip:port` transport, since the mDNS name gains a `(2)`
+  suffix each time the watch re-advertises.
+- **node comes from fnm**, which lives under `%APPDATA%\fnm` and only reaches
+  PATH via the shell profile — which a double-clicked shortcut never runs.
+  `tether.cmd` resolves `aliases\default` itself.
