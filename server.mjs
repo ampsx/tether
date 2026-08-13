@@ -24,6 +24,16 @@ const ADB = [
 /** Remote paths go through a single-quoted shell, so only the quote itself needs care. */
 const shellQuote = (path) => `'${String(path).replace(/'/g, `'\\''`)}'`;
 
+/**
+ * The watch usually ends up attached twice — once from an explicit `connect`
+ * and once because adb found the same device over mDNS. Both transports work,
+ * but any command without `-s` then fails with "more than one device". Every
+ * device-directed call goes through [target] so it names one.
+ */
+let serial = null;
+
+const target = (args) => (serial ? ['-s', serial, ...args] : args);
+
 async function adb(args, options = {}) {
   try {
     const { stdout, stderr } = await run(ADB, args, { maxBuffer: 64 * 1024 * 1024, ...options });
@@ -33,27 +43,34 @@ async function adb(args, options = {}) {
   }
 }
 
-const adbShell = (command) => adb(['shell', command]);
+const adbShell = (command) => adb(target(['shell', command]));
 
 // ---------------------------------------------------------------- device
 
 async function device() {
   const { stdout } = await adb(['devices', '-l']);
-  const line = stdout
+  const attached = stdout
     .split('\n')
     .slice(1)
     .map((row) => row.trim())
-    .find((row) => row && !row.startsWith('*') && row.includes('device'));
+    .filter((row) => row && !row.startsWith('*') && /\sdevice(\s|$)/.test(row))
+    .map((row) => row.split(/\s+/)[0]);
 
-  if (!line) return { connected: false };
+  if (!attached.length) {
+    serial = null;
+    return { connected: false };
+  }
 
-  const serial = line.split(/\s+/)[0];
+  // Prefer the ip:port transport: it survives a reconnect, where the mDNS name
+  // picks up a "(2)" suffix each time the watch re-advertises.
+  serial = attached.find((id) => /^\d+\.\d+\.\d+\.\d+:\d+$/.test(id)) ?? attached[0];
+
   const props = await adbShell(
     'getprop ro.product.model; getprop ro.build.version.release; getprop ro.product.manufacturer'
   );
   const [model, release, maker] = props.stdout.trim().split('\n').map((v) => v.trim());
 
-  return { connected: true, serial, model, release, maker };
+  return { connected: true, serial, model, release, maker, transports: attached.length };
 }
 
 async function storage() {
@@ -176,7 +193,7 @@ const routes = {
     if (!path?.startsWith(ROOT)) return json(res, 400, { error: 'Outside the watch storage.' });
 
     // exec-out keeps the stream binary-clean, unlike `adb shell`.
-    const child = spawn(ADB, ['exec-out', `cat ${shellQuote(path)}`]);
+    const child = spawn(ADB, target(['exec-out', `cat ${shellQuote(path)}`]));
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${basename(path).replace(/"/g, '')}"`,
@@ -186,14 +203,14 @@ const routes = {
   },
 
   'POST /api/upload': async (req, res, url) => {
-    const target = url.searchParams.get('path') || ROOT;
+    const destination = url.searchParams.get('path') || ROOT;
     const name = url.searchParams.get('name');
     if (!name) return json(res, 400, { error: 'The upload has no filename.' });
 
     const staged = join(tmpdir(), `tether-${randomUUID()}${extname(name)}`);
     await writeFile(staged, await readRawBody(req));
     try {
-      const result = await adb(['push', staged, `${target}/${name}`]);
+      const result = await adb(target(['push', staged, `${destination}/${name}`]));
       if (!result.ok) return json(res, 400, { error: result.stderr.trim() || 'The watch refused the file.' });
       json(res, 200, { ok: true });
     } finally {
@@ -206,7 +223,7 @@ const routes = {
     const staged = join(tmpdir(), `tether-${randomUUID()}.apk`);
     await writeFile(staged, await readRawBody(req));
     try {
-      const result = await adb(['install', '-r', staged]);
+      const result = await adb(target(['install', '-r', staged]));
       const text = `${result.stdout}${result.stderr}`.trim();
       if (!/Success/i.test(text)) return json(res, 400, { error: text || 'The install failed.' });
       json(res, 200, { message: `Installed ${name}.` });
@@ -221,7 +238,7 @@ const routes = {
     await mkdir(DOWNLOADS, { recursive: true });
     for (const path of paths) {
       if (!path.startsWith(ROOT)) continue;
-      const result = await adb(['pull', path, DOWNLOADS]);
+      const result = await adb(target(['pull', path, DOWNLOADS]));
       if (!result.ok) return json(res, 400, { error: result.stderr.trim() || `Could not fetch ${path}.` });
     }
     json(res, 200, { message: `Saved to ${DOWNLOADS}`, folder: DOWNLOADS });
