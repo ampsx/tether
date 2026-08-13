@@ -1,6 +1,7 @@
 downloads/
 node_modules/
 
-# stray logs from a detached start
-.server.log
-.server.err
+# Stray logs from starting the server detached. Wildcarded because the specific
+# names kept changing and two of them reached a commit before anyone noticed.
+*.log
+*.err
