@@ -24,7 +24,8 @@ if errorlevel 1 (
 
 where node >nul 2>&1
 if errorlevel 1 (
-  echo Could not find node. Open a terminal, run "fnm use default", then "node server.mjs".
+  echo Tether needs Node.js, which does not appear to be installed.
+  echo Install the LTS build from https://nodejs.org and run this again.
   pause
   exit /b 1
 )

@@ -31,6 +31,8 @@
   body {
     margin: 0;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: var(--ink-deep);
     color: var(--bone);
     font-family: var(--sans);
@@ -48,7 +50,34 @@
     color: var(--slate);
   }
 
-  main { max-width: 940px; margin: 0 auto; padding: 0 24px 80px; }
+  main { max-width: 940px; width: 100%; margin: 0 auto; padding: 0 24px 24px; flex: 1; }
+
+  /* ---- Colophon ---- */
+
+  /* Quiet by design: this is a tool you leave open while you work, so the
+     attribution should be findable rather than present. */
+  .colophon {
+    max-width: 940px;
+    /* A flex item shrinks to its content, so `margin: 0 auto` alone centred the
+       footer at its own width instead of aligning it with the content above. */
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px 24px 40px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--slate);
+  }
+
+  .colophon a { color: var(--slate); text-decoration: none; border-bottom: 1px solid transparent; }
+  .colophon a:hover { color: var(--bone); border-bottom-color: var(--line); }
+  .colophon-links { display: flex; gap: 18px; flex-wrap: wrap; }
+  .colophon a.colophon-give { color: var(--amber); }
+  .colophon a.colophon-give:hover { border-bottom-color: var(--amber); }
 
   /* ---- Masthead + device ---- */
 
@@ -290,6 +319,16 @@
     <p class="empty" id="empty" hidden>This folder is empty. Drop files anywhere to send them here.</p>
   </section>
 </main>
+
+<footer class="colophon">
+  <span>Tether is free, from <a href="https://sheikhira.com" target="_blank" rel="noopener">Sheikhira</a>.</span>
+  <span class="colophon-links">
+    <a href="https://sheikhira.com" target="_blank" rel="noopener">More tools</a>
+    <a href="https://github.com/ampsx/tether" target="_blank" rel="noopener">Source</a>
+    <a href="mailto:hello@sheikhira.com">Report a bug</a>
+    <a class="colophon-give" href="https://buy.stripe.com/6oU28k1f29rP4sYbhfgrS00" target="_blank" rel="noopener">Buy me a coffee</a>
+  </span>
+</footer>
 
 <input type="file" id="filePicker" multiple hidden>
 
