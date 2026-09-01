@@ -1,8 +1,14 @@
 {
   "name": "tether",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Manage files on a Wear OS watch over wireless adb.",
+  "homepage": "https://sheikhira.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ampsx/tether.git"
+  },
   "scripts": {
     "start": "node server.mjs",
     "test": "node test-devices.mjs",
